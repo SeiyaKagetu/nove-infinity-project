@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <!--
   Mac風 洗練された美しいダークモード + 全分野詳細3Dグラフ + LPデザイン - NOVE OS
   【完全検証済み版 - バグ修正・数値確認済み】
@@ -572,7 +573,7 @@
 
 </div>
 
-<!-- 全ての3Dグラフ生成スクリプト（完全検証済み） -->
+<!-- 全ての3Dグラフ生成スクリプト（Intersection Observer Lazy Loading対応） -->
 <script>
 // DOMContentLoadedイベントを待つ
 document.addEventListener('DOMContentLoaded', function() {
@@ -591,255 +592,276 @@ const sceneStyle = {
   zaxis: { gridcolor: '#333', zerolinecolor: '#444', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } }
 };
 
+// ===== グラフ生成関数マップ（Lazy Loading用） =====
+const graphGenerators = {};
+const loadedGraphs = new Set();
+
+
 // ===== セキュリティグラフ（全て検証済み） =====
 
 // セキュリティグラフ1: 脅威検知速度 3D散布図
-const systems = ['NOVE OS', 'Firewall A', 'Firewall B', 'IDS 1', 'IDS 2', 'IDS 3', 'Antivirus 1', 'Antivirus 2'];
-const detectionTime = [0.001, 0.5, 1.2, 2.3, 3.1, 4.5, 5.8, 7.2];
-const accuracy = [99.99, 98.2, 95.8, 92.5, 89.1, 85.3, 82.7, 79.4];
-const patternCount = [10000, 5000, 2500, 1500, 1200, 800, 500, 300];
+graphGenerators['security-3d-1'] = function() {
+  const systems = ['NOVE OS', 'Firewall A', 'Firewall B', 'IDS 1', 'IDS 2', 'IDS 3', 'Antivirus 1', 'Antivirus 2'];
+  const detectionTime = [0.001, 0.5, 1.2, 2.3, 3.1, 4.5, 5.8, 7.2];
+  const accuracy = [99.99, 98.2, 95.8, 92.5, 89.1, 85.3, 82.7, 79.4];
+  const patternCount = [10000, 5000, 2500, 1500, 1200, 800, 500, 300];
 
-Plotly.newPlot('security-3d-1', [{
-  type: 'scatter3d',
-  mode: 'markers+text',
-  x: detectionTime,
-  y: accuracy,
-  z: patternCount,
-  text: systems,
-  textposition: 'top center',
-  marker: {
-    size: 12,
-    color: ['#ff6b6b', '#ffaa00', '#ffaa00', '#ffcc00', '#ffcc00', '#ffee00', '#ffee00', '#fff000'],
-    line: { color: '#ffffff', width: 2 }
-  },
-  hovertemplate: '%{text}<br>検知時間: %{x}秒<br>精度: %{y}%<br>パターン数: %{z}<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'NOVE OS vs 競合システム', font: { color: '#ff6b6b', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '検知時間 (秒)', type: 'log' }, yaxis: { ...sceneStyle.yaxis, title: '精度 (%)' }, zaxis: { ...sceneStyle.zaxis, title: '検知パターン数' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('security-3d-1', [{
+    type: 'scatter3d',
+    mode: 'markers+text',
+    x: detectionTime,
+    y: accuracy,
+    z: patternCount,
+    text: systems,
+    textposition: 'top center',
+    marker: {
+      size: 12,
+      color: ['#ff6b6b', '#ffaa00', '#ffaa00', '#ffcc00', '#ffcc00', '#ffee00', '#ffee00', '#fff000'],
+      line: { color: '#ffffff', width: 2 }
+    },
+    hovertemplate: '%{text}<br>検知時間: %{x}秒<br>精度: %{y}%<br>パターン数: %{z}<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'NOVE OS vs 競合システム', font: { color: '#ff6b6b', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '検知時間 (秒)', type: 'log' }, yaxis: { ...sceneStyle.yaxis, title: '精度 (%)' }, zaxis: { ...sceneStyle.zaxis, title: '検知パターン数' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // セキュリティグラフ2: 攻撃タイプ別防御成功率（3D棒グラフ - 修正版）
-const attackTypes = ['DDoS', 'SQL Injection', 'XSS', 'CSRF', 'Buffer Overflow', 'Ransomware'];
-const noveDefense = [99.99, 99.95, 99.92, 99.88, 99.85, 99.80];
-const competitorDefense = [95.5, 94.2, 93.8, 92.5, 91.3, 89.7];
+graphGenerators['security-3d-2'] = function() {
+  const attackTypes = ['DDoS', 'SQL Injection', 'XSS', 'CSRF', 'Buffer Overflow', 'Ransomware'];
+  const noveDefense = [99.99, 99.95, 99.92, 99.88, 99.85, 99.80];
+  const competitorDefense = [95.5, 94.2, 93.8, 92.5, 91.3, 89.7];
 
-Plotly.newPlot('security-3d-2', [{
-  type: 'bar',
-  x: attackTypes,
-  y: noveDefense,
-  name: 'NOVE OS',
-  marker: { color: '#ff6b6b' },
-  hovertemplate: '%{x}<br>NOVE OS: %{y}%<extra></extra>'
-}, {
-  type: 'bar',
-  x: attackTypes,
-  y: competitorDefense,
-  name: '競合製品',
-  marker: { color: '#ffaa00' },
-  hovertemplate: '%{x}<br>競合製品: %{y}%<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: '攻撃タイプ別 防御成功率比較', font: { color: '#ff6b6b', size: 16 } },
-  xaxis: { title: '攻撃タイプ', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
-  yaxis: { title: '成功率 (%)', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' }, range: [85, 100] },
-  barmode: 'group',
-  margin: { l: 60, r: 40, b: 100, t: 60 }
-}, { responsive: true });
+  Plotly.newPlot('security-3d-2', [{
+    type: 'bar',
+    x: attackTypes,
+    y: noveDefense,
+    name: 'NOVE OS',
+    marker: { color: '#ff6b6b' },
+    hovertemplate: '%{x}<br>NOVE OS: %{y}%<extra></extra>'
+  }, {
+    type: 'bar',
+    x: attackTypes,
+    y: competitorDefense,
+    name: '競合製品',
+    marker: { color: '#ffaa00' },
+    hovertemplate: '%{x}<br>競合製品: %{y}%<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: '攻撃タイプ別 防御成功率比較', font: { color: '#ff6b6b', size: 16 } },
+    xaxis: { title: '攻撃タイプ', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
+    yaxis: { title: '成功率 (%)', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' }, range: [85, 100] },
+    barmode: 'group',
+    margin: { l: 60, r: 40, b: 100, t: 60 }
+  }, { responsive: true });
+};
 
 // セキュリティグラフ3: ネットワークトポロジー3D (50ノード - 固定シード)
-const nodeCount = 50;
-const nodeX = [23.5, 67.2, 45.8, 12.3, 89.4, 34.6, 78.1, 56.9, 91.2, 8.7, 42.3, 76.5, 19.8, 63.4, 87.6, 31.2, 54.7, 95.3, 16.9, 71.4, 38.1, 82.7, 27.5, 59.3, 93.8, 14.6, 48.2, 85.9, 22.7, 66.1, 39.4, 73.8, 11.5, 57.2, 94.6, 25.3, 61.9, 88.2, 33.7, 69.4, 15.1, 52.8, 90.5, 28.9, 64.3, 37.6, 81.2, 19.4, 55.7, 92.1];
-const nodeY = [45.2, 78.6, 23.1, 91.4, 12.7, 56.3, 34.8, 67.9, 8.5, 82.1, 49.6, 15.3, 73.8, 28.4, 94.2, 41.7, 65.9, 19.6, 87.3, 32.5, 76.1, 9.8, 53.4, 88.7, 24.9, 61.2, 37.5, 95.6, 14.3, 70.8, 26.1, 58.4, 93.7, 31.9, 69.2, 17.5, 84.6, 22.8, 59.1, 96.3, 35.7, 72.4, 11.9, 48.5, 85.2, 29.6, 64.8, 7.3, 43.1, 79.5];
-const nodeZ = [12.4, 56.8, 34.2, 78.9, 23.5, 91.1, 45.6, 67.3, 19.7, 82.4, 38.9, 71.2, 14.8, 59.3, 95.6, 27.1, 63.7, 8.9, 74.5, 31.2, 86.8, 21.4, 54.9, 92.3, 16.7, 61.5, 39.8, 88.1, 25.3, 69.7, 13.5, 57.8, 94.2, 32.6, 75.9, 18.1, 84.3, 29.7, 66.4, 97.2, 36.8, 73.5, 10.6, 49.1, 87.7, 24.9, 62.3, 5.8, 41.4, 80.6];
-const nodeStatus = [
-  'safe', 'safe', 'safe', 'safe', 'safe', 'threat', 'safe', 'safe', 'safe', 'safe',
-  'safe', 'safe', 'safe', 'threat', 'safe', 'safe', 'safe', 'safe', 'safe', 'safe',
-  'safe', 'safe', 'safe', 'safe', 'safe', 'safe', 'threat', 'safe', 'safe', 'safe',
-  'safe', 'safe', 'safe', 'safe', 'safe', 'safe', 'safe', 'threat', 'safe', 'safe',
-  'safe', 'safe', 'safe', 'safe', 'safe', 'threat', 'safe', 'safe', 'safe', 'safe'
-];
-const nodeColors = nodeStatus.map(s => s === 'threat' ? '#ff6b6b' : '#51cf66');
+graphGenerators['security-3d-3'] = function() {
+  const nodeCount = 50;
+  const nodeX = [23.5, 67.2, 45.8, 12.3, 89.4, 34.6, 78.1, 56.9, 91.2, 8.7, 42.3, 76.5, 19.8, 63.4, 87.6, 31.2, 54.7, 95.3, 16.9, 71.4, 38.1, 82.7, 27.5, 59.3, 93.8, 14.6, 48.2, 85.9, 22.7, 66.1, 39.4, 73.8, 11.5, 57.2, 94.6, 25.3, 61.9, 88.2, 33.7, 69.4, 15.1, 52.8, 90.5, 28.9, 64.3, 37.6, 81.2, 19.4, 55.7, 92.1];
+  const nodeY = [45.2, 78.6, 23.1, 91.4, 12.7, 56.3, 34.8, 67.9, 8.5, 82.1, 49.6, 15.3, 73.8, 28.4, 94.2, 41.7, 65.9, 19.6, 87.3, 32.5, 76.1, 9.8, 53.4, 88.7, 24.9, 61.2, 37.5, 95.6, 14.3, 70.8, 26.1, 58.4, 93.7, 31.9, 69.2, 17.5, 84.6, 22.8, 59.1, 96.3, 35.7, 72.4, 11.9, 48.5, 85.2, 29.6, 64.8, 7.3, 43.1, 79.5];
+  const nodeZ = [12.4, 56.8, 34.2, 78.9, 23.5, 91.1, 45.6, 67.3, 19.7, 82.4, 38.9, 71.2, 14.8, 59.3, 95.6, 27.1, 63.7, 8.9, 74.5, 31.2, 86.8, 21.4, 54.9, 92.3, 16.7, 61.5, 39.8, 88.1, 25.3, 69.7, 13.5, 57.8, 94.2, 32.6, 75.9, 18.1, 84.3, 29.7, 66.4, 97.2, 36.8, 73.5, 10.6, 49.1, 87.7, 24.9, 62.3, 5.8, 41.4, 80.6];
+  const nodeStatus = [
+    'safe', 'safe', 'safe', 'safe', 'safe', 'threat', 'safe', 'safe', 'safe', 'safe',
+    'safe', 'safe', 'safe', 'threat', 'safe', 'safe', 'safe', 'safe', 'safe', 'safe',
+    'safe', 'safe', 'safe', 'safe', 'safe', 'safe', 'threat', 'safe', 'safe', 'safe',
+    'safe', 'safe', 'safe', 'safe', 'safe', 'safe', 'safe', 'threat', 'safe', 'safe',
+    'safe', 'safe', 'safe', 'safe', 'safe', 'threat', 'safe', 'safe', 'safe', 'safe'
+  ];
+  const nodeColors = nodeStatus.map(s => s === 'threat' ? '#ff6b6b' : '#51cf66');
 
-Plotly.newPlot('security-3d-3', [{
-  type: 'scatter3d',
-  mode: 'markers',
-  x: nodeX,
-  y: nodeY,
-  z: nodeZ,
-  marker: {
-    size: 8,
-    color: nodeColors,
-    line: { color: '#ffffff', width: 1 }
-  },
-  hovertemplate: 'ノード: %{text}<br>X: %{x:.1f}<br>Y: %{y:.1f}<br>Z: %{z:.1f}<extra></extra>',
-  text: nodeStatus.map((s, i) => `Node-${i+1} (${s === 'threat' ? '脅威' : '安全'})`)
-}], {
-  ...darkTheme,
-  title: { text: 'リアルタイム ネットワークトポロジー監視 (50ノード)', font: { color: '#ff6b6b', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'X座標' }, yaxis: { ...sceneStyle.yaxis, title: 'Y座標' }, zaxis: { ...sceneStyle.zaxis, title: 'Z座標' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('security-3d-3', [{
+    type: 'scatter3d',
+    mode: 'markers',
+    x: nodeX,
+    y: nodeY,
+    z: nodeZ,
+    marker: {
+      size: 8,
+      color: nodeColors,
+      line: { color: '#ffffff', width: 1 }
+    },
+    hovertemplate: 'ノード: %{text}<br>X: %{x:.1f}<br>Y: %{y:.1f}<br>Z: %{z:.1f}<extra></extra>',
+    text: nodeStatus.map((s, i) => `Node-${i+1} (${s === 'threat' ? '脅威' : '安全'})`)
+  }], {
+    ...darkTheme,
+    title: { text: 'リアルタイム ネットワークトポロジー監視 (50ノード)', font: { color: '#ff6b6b', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'X座標' }, yaxis: { ...sceneStyle.yaxis, title: 'Y座標' }, zaxis: { ...sceneStyle.zaxis, title: 'Z座標' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // セキュリティグラフ4: 24時間脅威検知タイムライン（固定データ）
-const hours = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
-const threats = [12, 18, 25, 32, 28, 22, 15, 10, 8, 12, 18, 25, 35, 42, 38, 30, 25, 20, 28, 35, 40, 38, 30, 20];
-const cumulative = threats.reduce((acc, val, i) => [...acc, (acc[i-1] || 0) + val], []);
+graphGenerators['security-3d-4'] = function() {
+  const hours = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+  const threats = [12, 18, 25, 32, 28, 22, 15, 10, 8, 12, 18, 25, 35, 42, 38, 30, 25, 20, 28, 35, 40, 38, 30, 20];
+  const cumulative = threats.reduce((acc, val, i) => [...acc, (acc[i-1] || 0) + val], []);
 
-Plotly.newPlot('security-3d-4', [{
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: hours,
-  y: threats,
-  z: cumulative,
-  line: { color: '#ff6b6b', width: 4 },
-  marker: { size: 6, color: '#ffd93d' },
-  hovertemplate: '時刻: %{x}時<br>検知数: %{y}件<br>累計: %{z}件<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: '24時間 脅威検知タイムライン', font: { color: '#ff6b6b', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '時刻 (時)' }, yaxis: { ...sceneStyle.yaxis, title: '検知数' }, zaxis: { ...sceneStyle.zaxis, title: '累積検知数' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('security-3d-4', [{
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: hours,
+    y: threats,
+    z: cumulative,
+    line: { color: '#ff6b6b', width: 4 },
+    marker: { size: 6, color: '#ffd93d' },
+    hovertemplate: '時刻: %{x}時<br>検知数: %{y}件<br>累計: %{z}件<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: '24時間 脅威検知タイムライン', font: { color: '#ff6b6b', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '時刻 (時)' }, yaxis: { ...sceneStyle.yaxis, title: '検知数' }, zaxis: { ...sceneStyle.zaxis, title: '累積検知数' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // ===== 医療グラフ（全て検証済み） =====
 
 // 医療グラフ1: 30日間バイタルサイン（固定データ）
-const days = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
-const heartRate = [72, 74, 73, 75, 76, 74, 72, 71, 73, 75, 77, 76, 74, 73, 72, 74, 75, 76, 78, 77, 75, 73, 72, 74, 75, 77, 76, 74, 73, 72];
-const bloodPressure = [118, 120, 119, 122, 124, 121, 118, 117, 119, 122, 125, 123, 120, 119, 118, 121, 123, 124, 126, 124, 122, 120, 118, 121, 123, 125, 124, 121, 119, 118];
-const temperature = [36.4, 36.5, 36.6, 36.5, 36.7, 36.6, 36.5, 36.4, 36.5, 36.6, 36.7, 36.6, 36.5, 36.4, 36.5, 36.6, 36.7, 36.8, 36.7, 36.6, 36.5, 36.4, 36.5, 36.6, 36.7, 36.8, 36.7, 36.6, 36.5, 36.4];
+graphGenerators['medical-3d-1'] = function() {
+  const days = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
+  const heartRate = [72, 74, 73, 75, 76, 74, 72, 71, 73, 75, 77, 76, 74, 73, 72, 74, 75, 76, 78, 77, 75, 73, 72, 74, 75, 77, 76, 74, 73, 72];
+  const bloodPressure = [118, 120, 119, 122, 124, 121, 118, 117, 119, 122, 125, 123, 120, 119, 118, 121, 123, 124, 126, 124, 122, 120, 118, 121, 123, 125, 124, 121, 119, 118];
+  const temperature = [36.4, 36.5, 36.6, 36.5, 36.7, 36.6, 36.5, 36.4, 36.5, 36.6, 36.7, 36.6, 36.5, 36.4, 36.5, 36.6, 36.7, 36.8, 36.7, 36.6, 36.5, 36.4, 36.5, 36.6, 36.7, 36.8, 36.7, 36.6, 36.5, 36.4];
 
-Plotly.newPlot('medical-3d-1', [{
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: days,
-  y: heartRate,
-  z: Array(30).fill(1),
-  line: { color: '#ff6b6b', width: 3 },
-  marker: { size: 4 },
-  name: '心拍数',
-  hovertemplate: '日: %{x}<br>心拍数: %{y} bpm<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: days,
-  y: bloodPressure,
-  z: Array(30).fill(2),
-  line: { color: '#4fc3f7', width: 3 },
-  marker: { size: 4 },
-  name: '血圧',
-  hovertemplate: '日: %{x}<br>血圧: %{y} mmHg<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: days,
-  y: temperature.map(t => t * 3.3), // スケール調整
-  z: Array(30).fill(3),
-  line: { color: '#51cf66', width: 3 },
-  marker: { size: 4 },
-  name: '体温',
-  hovertemplate: '日: %{x}<br>体温: %{text}°C<extra></extra>',
-  text: temperature.map(t => t.toFixed(1))
-}], {
-  ...darkTheme,
-  title: { text: '30日間 バイタルサイン推移', font: { color: '#51cf66', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '日数' }, yaxis: { ...sceneStyle.yaxis, title: '測定値' }, zaxis: { ...sceneStyle.zaxis, title: '指標', showticklabels: false } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('medical-3d-1', [{
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: days,
+    y: heartRate,
+    z: Array(30).fill(1),
+    line: { color: '#ff6b6b', width: 3 },
+    marker: { size: 4 },
+    name: '心拍数',
+    hovertemplate: '日: %{x}<br>心拍数: %{y} bpm<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: days,
+    y: bloodPressure,
+    z: Array(30).fill(2),
+    line: { color: '#4fc3f7', width: 3 },
+    marker: { size: 4 },
+    name: '血圧',
+    hovertemplate: '日: %{x}<br>血圧: %{y} mmHg<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: days,
+    y: temperature.map(t => t * 3.3), // スケール調整
+    z: Array(30).fill(3),
+    line: { color: '#51cf66', width: 3 },
+    marker: { size: 4 },
+    name: '体温',
+    hovertemplate: '日: %{x}<br>体温: %{text}°C<extra></extra>',
+    text: temperature.map(t => t.toFixed(1))
+  }], {
+    ...darkTheme,
+    title: { text: '30日間 バイタルサイン推移', font: { color: '#51cf66', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '日数' }, yaxis: { ...sceneStyle.yaxis, title: '測定値' }, zaxis: { ...sceneStyle.zaxis, title: '指標', showticklabels: false } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // 医療グラフ2: LSTM健康予測（固定データ）
-const predDays = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
-const actualHealth = [85, 84.5, 84, 83.5, 83, 82.5, 82, 81.5, 81, 80.5, 80, 79.5, 79, 78.5];
-const predictedHealth = [85, 84.4, 84.1, 83.6, 82.9, 82.4, 82.1, 81.6, 80.9, 80.4, 80.1, 79.6, 78.9, 78.4];
+graphGenerators['medical-3d-2'] = function() {
+  const predDays = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+  const actualHealth = [85, 84.5, 84, 83.5, 83, 82.5, 82, 81.5, 81, 80.5, 80, 79.5, 79, 78.5];
+  const predictedHealth = [85, 84.4, 84.1, 83.6, 82.9, 82.4, 82.1, 81.6, 80.9, 80.4, 80.1, 79.6, 78.9, 78.4];
 
-Plotly.newPlot('medical-3d-2', [{
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: predDays,
-  y: actualHealth,
-  z: Array(14).fill(1),
-  line: { color: '#51cf66', width: 4 },
-  marker: { size: 6 },
-  name: '実測値',
-  hovertemplate: '日: %{x}<br>健康スコア: %{y}<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: predDays,
-  y: predictedHealth,
-  z: Array(14).fill(2),
-  line: { color: '#a78bfa', width: 4, dash: 'dash' },
-  marker: { size: 6, symbol: 'diamond' },
-  name: 'LSTM予測',
-  hovertemplate: '日: %{x}<br>予測スコア: %{y}<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'LSTM 健康予測 vs 実測値', font: { color: '#51cf66', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '日数' }, yaxis: { ...sceneStyle.yaxis, title: '健康スコア', range: [75, 90] }, zaxis: { ...sceneStyle.zaxis, title: 'データ種別', showticklabels: false } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('medical-3d-2', [{
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: predDays,
+    y: actualHealth,
+    z: Array(14).fill(1),
+    line: { color: '#51cf66', width: 4 },
+    marker: { size: 6 },
+    name: '実測値',
+    hovertemplate: '日: %{x}<br>健康スコア: %{y}<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: predDays,
+    y: predictedHealth,
+    z: Array(14).fill(2),
+    line: { color: '#a78bfa', width: 4, dash: 'dash' },
+    marker: { size: 6, symbol: 'diamond' },
+    name: 'LSTM予測',
+    hovertemplate: '日: %{x}<br>予測スコア: %{y}<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'LSTM 健康予測 vs 実測値', font: { color: '#51cf66', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '日数' }, yaxis: { ...sceneStyle.yaxis, title: '健康スコア', range: [75, 90] }, zaxis: { ...sceneStyle.zaxis, title: 'データ種別', showticklabels: false } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // 医療グラフ3: 腫瘍マーカー推移（固定データ）
-const markerMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const cea = [8.5, 8.2, 7.9, 7.6, 7.3, 7.0, 6.7, 6.4, 6.1, 5.8, 5.5, 5.2];
-const ca199 = [45, 43, 41, 39, 37, 35, 33, 31, 29, 27, 25, 23];
+graphGenerators['medical-3d-3'] = function() {
+  const markerMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const cea = [8.5, 8.2, 7.9, 7.6, 7.3, 7.0, 6.7, 6.4, 6.1, 5.8, 5.5, 5.2];
+  const ca199 = [45, 43, 41, 39, 37, 35, 33, 31, 29, 27, 25, 23];
 
-Plotly.newPlot('medical-3d-3', [{
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: markerMonths,
-  y: cea,
-  z: Array(12).fill(1),
-  line: { color: '#ff6b6b', width: 4 },
-  marker: { size: 7 },
-  name: 'CEA',
-  hovertemplate: '月: %{x}<br>CEA: %{y} ng/mL<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: markerMonths,
-  y: ca199,
-  z: Array(12).fill(2),
-  line: { color: '#ffd93d', width: 4 },
-  marker: { size: 7 },
-  name: 'CA19-9',
-  hovertemplate: '月: %{x}<br>CA19-9: %{y} U/mL<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: '腫瘍マーカー (CEA, CA19-9) 推移', font: { color: '#51cf66', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '月数' }, yaxis: { ...sceneStyle.yaxis, title: '測定値' }, zaxis: { ...sceneStyle.zaxis, title: 'マーカー種別', showticklabels: false } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('medical-3d-3', [{
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: markerMonths,
+    y: cea,
+    z: Array(12).fill(1),
+    line: { color: '#ff6b6b', width: 4 },
+    marker: { size: 7 },
+    name: 'CEA',
+    hovertemplate: '月: %{x}<br>CEA: %{y} ng/mL<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: markerMonths,
+    y: ca199,
+    z: Array(12).fill(2),
+    line: { color: '#ffd93d', width: 4 },
+    marker: { size: 7 },
+    name: 'CA19-9',
+    hovertemplate: '月: %{x}<br>CA19-9: %{y} U/mL<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: '腫瘍マーカー (CEA, CA19-9) 推移', font: { color: '#51cf66', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '月数' }, yaxis: { ...sceneStyle.yaxis, title: '測定値' }, zaxis: { ...sceneStyle.zaxis, title: 'マーカー種別', showticklabels: false } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // 医療グラフ4: 服薬コンプライアンス（2Dグラフ - 修正版）
-const medDays = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
-const compliance = [100, 100, 100, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0, 100, 100];
-const alertDays = [4, 16, 28];
+graphGenerators['medical-3d-4'] = function() {
+  const medDays = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
+  const compliance = [100, 100, 100, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0, 100, 100];
+  const alertDays = [4, 16, 28];
 
-Plotly.newPlot('medical-3d-4', [{
-  type: 'bar',
-  x: medDays,
-  y: compliance,
-  marker: { color: compliance.map(c => c === 100 ? '#51cf66' : '#ff6b6b') },
-  name: '服薬状況',
-  hovertemplate: '日: %{x}<br>服薬: %{y}%<extra></extra>'
-}, {
-  type: 'scatter',
-  x: alertDays,
-  y: [50, 50, 50],
-  mode: 'markers',
-  marker: { size: 15, color: '#ffd93d', symbol: 'star', line: { color: '#ffffff', width: 2 } },
-  name: 'アラート',
-  hovertemplate: '日: %{x}<br>アラート発生<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: '服薬管理ダッシュボード (30日間)', font: { color: '#51cf66', size: 16 } },
-  xaxis: { title: '日数', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
-  yaxis: { title: '服薬率 (%)', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' }, range: [0, 110] },
-  margin: { l: 60, r: 40, b: 60, t: 60 }
-}, { responsive: true });
+  Plotly.newPlot('medical-3d-4', [{
+    type: 'bar',
+    x: medDays,
+    y: compliance,
+    marker: { color: compliance.map(c => c === 100 ? '#51cf66' : '#ff6b6b') },
+    name: '服薬状況',
+    hovertemplate: '日: %{x}<br>服薬: %{y}%<extra></extra>'
+  }, {
+    type: 'scatter',
+    x: alertDays,
+    y: [50, 50, 50],
+    mode: 'markers',
+    marker: { size: 15, color: '#ffd93d', symbol: 'star', line: { color: '#ffffff', width: 2 } },
+    name: 'アラート',
+    hovertemplate: '日: %{x}<br>アラート発生<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: '服薬管理ダッシュボード (30日間)', font: { color: '#51cf66', size: 16 } },
+    xaxis: { title: '日数', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
+    yaxis: { title: '服薬率 (%)', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' }, range: [0, 110] },
+    margin: { l: 60, r: 40, b: 60, t: 60 }
+  }, { responsive: true });
+};
 
 // ===== AGIグラフ（全て検証済み） =====
 
@@ -870,195 +892,209 @@ const gpuMemory = [
   85, 86, 87, 88, 89, 90, 90, 89, 88, 87
 ];
 
-Plotly.newPlot('agi-3d-1', [{
-  type: 'scatter3d',
-  mode: 'lines',
-  x: gpuTime,
-  y: gpuUsage,
-  z: gpuMemory,
-  line: { color: '#a78bfa', width: 4 },
-  hovertemplate: '時刻: %{x:.1f}秒<br>GPU使用率: %{y}%<br>メモリ使用量: %{z}%<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'リアルタイム GPU使用率監視', font: { color: '#a78bfa', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '時刻 (秒)' }, yaxis: { ...sceneStyle.yaxis, title: 'GPU使用率 (%)' }, zaxis: { ...sceneStyle.zaxis, title: 'メモリ使用量 (%)' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+graphGenerators['agi-3d-1'] = function() {
+  Plotly.newPlot('agi-3d-1', [{
+    type: 'scatter3d',
+    mode: 'lines',
+    x: gpuTime,
+    y: gpuUsage,
+    z: gpuMemory,
+    line: { color: '#a78bfa', width: 4 },
+    hovertemplate: '時刻: %{x:.1f}秒<br>GPU使用率: %{y}%<br>メモリ使用量: %{z}%<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'リアルタイム GPU使用率監視', font: { color: '#a78bfa', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '時刻 (秒)' }, yaxis: { ...sceneStyle.yaxis, title: 'GPU使用率 (%)' }, zaxis: { ...sceneStyle.zaxis, title: 'メモリ使用量 (%)' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // AGIグラフ2: 学習曲線（固定データ）
-const epochs = Array.from({length: 100}, (_, i) => i + 1);
-const trainLoss = epochs.map(e => 2.5 * Math.exp(-e / 20));
-const valLoss = epochs.map(e => 2.5 * Math.exp(-e / 20) + 0.1);
-const trainAcc = epochs.map(e => 100 * (1 - Math.exp(-e / 15)));
+graphGenerators['agi-3d-2'] = function() {
+  const epochs = Array.from({length: 100}, (_, i) => i + 1);
+  const trainLoss = epochs.map(e => 2.5 * Math.exp(-e / 20));
+  const valLoss = epochs.map(e => 2.5 * Math.exp(-e / 20) + 0.1);
+  const trainAcc = epochs.map(e => 100 * (1 - Math.exp(-e / 15)));
 
-Plotly.newPlot('agi-3d-2', [{
-  type: 'scatter3d',
-  mode: 'lines',
-  x: epochs,
-  y: trainLoss,
-  z: Array(100).fill(1),
-  line: { color: '#ff6b6b', width: 3 },
-  name: '訓練損失',
-  hovertemplate: 'エポック: %{x}<br>訓練損失: %{y:.3f}<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'lines',
-  x: epochs,
-  y: valLoss,
-  z: Array(100).fill(2),
-  line: { color: '#4fc3f7', width: 3 },
-  name: '検証損失',
-  hovertemplate: 'エポック: %{x}<br>検証損失: %{y:.3f}<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'lines',
-  x: epochs,
-  y: trainAcc,
-  z: Array(100).fill(3),
-  line: { color: '#51cf66', width: 3 },
-  name: '訓練精度',
-  hovertemplate: 'エポック: %{x}<br>訓練精度: %{y:.1f}%<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'ニューラルネットワーク 学習曲線 (100エポック)', font: { color: '#a78bfa', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'エポック' }, yaxis: { ...sceneStyle.yaxis, title: '値' }, zaxis: { ...sceneStyle.zaxis, title: '指標', showticklabels: false } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('agi-3d-2', [{
+    type: 'scatter3d',
+    mode: 'lines',
+    x: epochs,
+    y: trainLoss,
+    z: Array(100).fill(1),
+    line: { color: '#ff6b6b', width: 3 },
+    name: '訓練損失',
+    hovertemplate: 'エポック: %{x}<br>訓練損失: %{y:.3f}<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'lines',
+    x: epochs,
+    y: valLoss,
+    z: Array(100).fill(2),
+    line: { color: '#4fc3f7', width: 3 },
+    name: '検証損失',
+    hovertemplate: 'エポック: %{x}<br>検証損失: %{y:.3f}<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'lines',
+    x: epochs,
+    y: trainAcc,
+    z: Array(100).fill(3),
+    line: { color: '#51cf66', width: 3 },
+    name: '訓練精度',
+    hovertemplate: 'エポック: %{x}<br>訓練精度: %{y:.1f}%<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'ニューラルネットワーク 学習曲線 (100エポック)', font: { color: '#a78bfa', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'エポック' }, yaxis: { ...sceneStyle.yaxis, title: '値' }, zaxis: { ...sceneStyle.zaxis, title: '指標', showticklabels: false } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // AGIグラフ3: AIモデル精度比較（固定データ）
-const models = ['NOVE AI', 'GPT-4', 'Claude', 'LLaMA-3', 'Gemini', 'Mistral', 'Falcon', 'BLOOM'];
-const accuracy3d = [95.2, 94.8, 94.5, 93.2, 92.8, 91.5, 90.2, 89.5];
-const speed3d = [4261, 1200, 1100, 850, 780, 650, 520, 450];
-const parameters = [10, 1760, 175, 70, 175, 7, 40, 176];
+graphGenerators['agi-3d-3'] = function() {
+  const models = ['NOVE AI', 'GPT-4', 'Claude', 'LLaMA-3', 'Gemini', 'Mistral', 'Falcon', 'BLOOM'];
+  const accuracy3d = [95.2, 94.8, 94.5, 93.2, 92.8, 91.5, 90.2, 89.5];
+  const speed3d = [4261, 1200, 1100, 850, 780, 650, 520, 450];
+  const parameters = [10, 1760, 175, 70, 175, 7, 40, 176];
 
-Plotly.newPlot('agi-3d-3', [{
-  type: 'scatter3d',
-  mode: 'markers+text',
-  x: accuracy3d,
-  y: speed3d,
-  z: parameters,
-  text: models,
-  textposition: 'top center',
-  marker: {
-    size: 12,
-    color: ['#a78bfa', '#ffaa00', '#ff6b6b', '#4fc3f7', '#51cf66', '#ffd93d', '#ff9999', '#99ccff'],
-    line: { color: '#ffffff', width: 2 }
-  },
-  hovertemplate: '%{text}<br>精度: %{x}%<br>速度: %{y}x<br>パラメータ: %{z}B<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'AI モデル性能比較 3D', font: { color: '#a78bfa', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '精度 (%)' }, yaxis: { ...sceneStyle.yaxis, title: '高速化倍率', type: 'log' }, zaxis: { ...sceneStyle.zaxis, title: 'パラメータ数 (B)' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('agi-3d-3', [{
+    type: 'scatter3d',
+    mode: 'markers+text',
+    x: accuracy3d,
+    y: speed3d,
+    z: parameters,
+    text: models,
+    textposition: 'top center',
+    marker: {
+      size: 12,
+      color: ['#a78bfa', '#ffaa00', '#ff6b6b', '#4fc3f7', '#51cf66', '#ffd93d', '#ff9999', '#99ccff'],
+      line: { color: '#ffffff', width: 2 }
+    },
+    hovertemplate: '%{text}<br>精度: %{x}%<br>速度: %{y}x<br>パラメータ: %{z}B<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'AI モデル性能比較 3D', font: { color: '#a78bfa', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '精度 (%)' }, yaxis: { ...sceneStyle.yaxis, title: '高速化倍率', type: 'log' }, zaxis: { ...sceneStyle.zaxis, title: 'パラメータ数 (B)' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // AGIグラフ4: CUDA最適化効果サーフェス（固定データ）
-const batchSizes = [8, 16, 32, 64, 128];
-const threadCounts = [128, 256, 512, 1024, 2048];
-const zData = [
-  [82, 164, 328, 656, 1312],
-  [164, 328, 656, 1312, 2624],
-  [328, 656, 1312, 2624, 4261],
-  [656, 1312, 2624, 4261, 4261],
-  [1312, 2624, 4261, 4261, 4261]
-];
+graphGenerators['agi-3d-4'] = function() {
+  const batchSizes = [8, 16, 32, 64, 128];
+  const threadCounts = [128, 256, 512, 1024, 2048];
+  const zData = [
+    [82, 164, 328, 656, 1312],
+    [164, 328, 656, 1312, 2624],
+    [328, 656, 1312, 2624, 4261],
+    [656, 1312, 2624, 4261, 4261],
+    [1312, 2624, 4261, 4261, 4261]
+  ];
 
-Plotly.newPlot('agi-3d-4', [{
-  type: 'surface',
-  x: batchSizes,
-  y: threadCounts,
-  z: zData,
-  colorscale: [
-    [0, '#0a0a0a'],
-    [0.5, '#a78bfa'],
-    [1, '#ffd93d']
-  ],
-  hovertemplate: 'バッチサイズ: %{x}<br>スレッド数: %{y}<br>性能: %{z}x<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'CUDA最適化効果 3Dサーフェス', font: { color: '#a78bfa', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'バッチサイズ' }, yaxis: { ...sceneStyle.yaxis, title: 'スレッド数' }, zaxis: { ...sceneStyle.zaxis, title: '高速化倍率' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('agi-3d-4', [{
+    type: 'surface',
+    x: batchSizes,
+    y: threadCounts,
+    z: zData,
+    colorscale: [
+      [0, '#0a0a0a'],
+      [0.5, '#a78bfa'],
+      [1, '#ffd93d']
+    ],
+    hovertemplate: 'バッチサイズ: %{x}<br>スレッド数: %{y}<br>性能: %{z}x<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'CUDA最適化効果 3Dサーフェス', font: { color: '#a78bfa', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'バッチサイズ' }, yaxis: { ...sceneStyle.yaxis, title: 'スレッド数' }, zaxis: { ...sceneStyle.zaxis, title: '高速化倍率' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // ===== パフォーマンスグラフ（全て検証済み） =====
 
 // パフォーマンスグラフ1: カーネル応答時間（固定データ）
-const osNames = ['NOVE OS', 'Linux', 'Windows', 'macOS', 'FreeBSD', 'Solaris'];
-const responseTime = [0.069, 15.2, 28.5, 22.1, 18.7, 25.3];
+graphGenerators['performance-3d-1'] = function() {
+  const osNames = ['NOVE OS', 'Linux', 'Windows', 'macOS', 'FreeBSD', 'Solaris'];
+  const responseTime = [0.069, 15.2, 28.5, 22.1, 18.7, 25.3];
 
-Plotly.newPlot('performance-3d-1', [{
-  type: 'bar',
-  x: osNames,
-  y: responseTime,
-  marker: {
-    color: ['#4fc3f7', '#ffaa00', '#ff6b6b', '#a78bfa', '#51cf66', '#ffd93d']
-  },
-  hovertemplate: '%{x}<br>応答時間: %{y}μs<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'カーネル応答時間比較', font: { color: '#4fc3f7', size: 16 } },
-  xaxis: { title: 'OS', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
-  yaxis: { title: '応答時間 (μs)', type: 'log', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
-  margin: { l: 60, r: 40, b: 100, t: 60 }
-}, { responsive: true });
+  Plotly.newPlot('performance-3d-1', [{
+    type: 'bar',
+    x: osNames,
+    y: responseTime,
+    marker: {
+      color: ['#4fc3f7', '#ffaa00', '#ff6b6b', '#a78bfa', '#51cf66', '#ffd93d']
+    },
+    hovertemplate: '%{x}<br>応答時間: %{y}μs<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'カーネル応答時間比較', font: { color: '#4fc3f7', size: 16 } },
+    xaxis: { title: 'OS', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
+    yaxis: { title: '応答時間 (μs)', type: 'log', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
+    margin: { l: 60, r: 40, b: 100, t: 60 }
+  }, { responsive: true });
+};
 
 // パフォーマンスグラフ2: メモリ最適化前後（固定データ）
-const categories = ['起動時', 'アイドル', '通常動作', '高負荷', 'ピーク'];
-const beforeMem = [2500, 1800, 3200, 5500, 7200];
-const afterMem = [35, 25, 45, 77, 101];
+graphGenerators['performance-3d-2'] = function() {
+  const categories = ['起動時', 'アイドル', '通常動作', '高負荷', 'ピーク'];
+  const beforeMem = [2500, 1800, 3200, 5500, 7200];
+  const afterMem = [35, 25, 45, 77, 101];
 
-Plotly.newPlot('performance-3d-2', [{
-  type: 'bar',
-  x: categories,
-  y: beforeMem,
-  name: '最適化前',
-  marker: { color: '#ff6b6b' },
-  hovertemplate: '%{x}<br>使用量: %{y} MB<extra></extra>'
-}, {
-  type: 'bar',
-  x: categories,
-  y: afterMem,
-  name: '最適化後 (99.86%削減)',
-  marker: { color: '#51cf66' },
-  hovertemplate: '%{x}<br>使用量: %{y} MB<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'メモリ最適化効果 (99.86%削減達成)', font: { color: '#4fc3f7', size: 16 } },
-  xaxis: { title: '動作状態', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
-  yaxis: { title: 'メモリ使用量 (MB)', type: 'log', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
-  barmode: 'group',
-  margin: { l: 60, r: 40, b: 100, t: 60 }
-}, { responsive: true });
+  Plotly.newPlot('performance-3d-2', [{
+    type: 'bar',
+    x: categories,
+    y: beforeMem,
+    name: '最適化前',
+    marker: { color: '#ff6b6b' },
+    hovertemplate: '%{x}<br>使用量: %{y} MB<extra></extra>'
+  }, {
+    type: 'bar',
+    x: categories,
+    y: afterMem,
+    name: '最適化後 (99.86%削減)',
+    marker: { color: '#51cf66' },
+    hovertemplate: '%{x}<br>使用量: %{y} MB<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'メモリ最適化効果 (99.86%削減達成)', font: { color: '#4fc3f7', size: 16 } },
+    xaxis: { title: '動作状態', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
+    yaxis: { title: 'メモリ使用量 (MB)', type: 'log', gridcolor: '#333', titlefont: { color: '#ffffff' }, tickfont: { color: '#cccccc' } },
+    barmode: 'group',
+    margin: { l: 60, r: 40, b: 100, t: 60 }
+  }, { responsive: true });
+};
 
 // パフォーマンスグラフ3: GPU vs CPU性能比較サーフェス（固定データ）
-const dataSizes = [100, 500, 1000, 5000, 10000];
-const complexity = [1, 2, 3, 4, 5];
-const perfData = [
-  [10, 50, 100, 500, 1000],
-  [50, 250, 500, 2500, 4261],
-  [100, 500, 1000, 4261, 4261],
-  [500, 2500, 4261, 4261, 4261],
-  [1000, 4261, 4261, 4261, 4261]
-];
+graphGenerators['performance-3d-3'] = function() {
+  const dataSizes = [100, 500, 1000, 5000, 10000];
+  const complexity = [1, 2, 3, 4, 5];
+  const perfData = [
+    [10, 50, 100, 500, 1000],
+    [50, 250, 500, 2500, 4261],
+    [100, 500, 1000, 4261, 4261],
+    [500, 2500, 4261, 4261, 4261],
+    [1000, 4261, 4261, 4261, 4261]
+  ];
 
-Plotly.newPlot('performance-3d-3', [{
-  type: 'surface',
-  x: dataSizes,
-  y: complexity,
-  z: perfData,
-  colorscale: [
-    [0, '#0a0a0a'],
-    [0.5, '#4fc3f7'],
-    [1, '#ffd93d']
-  ],
-  hovertemplate: 'データサイズ: %{x}<br>複雑度: %{y}<br>GPU高速化: %{z}x<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'GPU vs CPU 性能比較サーフェス (最大4,261x)', font: { color: '#4fc3f7', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'データサイズ' }, yaxis: { ...sceneStyle.yaxis, title: '計算複雑度' }, zaxis: { ...sceneStyle.zaxis, title: 'GPU高速化倍率' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('performance-3d-3', [{
+    type: 'surface',
+    x: dataSizes,
+    y: complexity,
+    z: perfData,
+    colorscale: [
+      [0, '#0a0a0a'],
+      [0.5, '#4fc3f7'],
+      [1, '#ffd93d']
+    ],
+    hovertemplate: 'データサイズ: %{x}<br>複雑度: %{y}<br>GPU高速化: %{z}x<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'GPU vs CPU 性能比較サーフェス (最大4,261x)', font: { color: '#4fc3f7', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'データサイズ' }, yaxis: { ...sceneStyle.yaxis, title: '計算複雑度' }, zaxis: { ...sceneStyle.zaxis, title: 'GPU高速化倍率' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // パフォーマンスグラフ4: システムリソース使用率タイムライン（固定データ）
 const resTime = Array.from({length: 60}, (_, i) => i);
@@ -1087,100 +1123,106 @@ const diskIO = [
   26, 27, 28, 29, 30, 31, 32, 33, 34, 35
 ];
 
-Plotly.newPlot('performance-3d-4', [{
-  type: 'scatter3d',
-  mode: 'lines',
-  x: resTime,
-  y: cpuUsage,
-  z: Array(60).fill(1),
-  line: { color: '#ff6b6b', width: 3 },
-  name: 'CPU',
-  hovertemplate: '時刻: %{x}秒<br>CPU: %{y}%<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'lines',
-  x: resTime,
-  y: memUsage,
-  z: Array(60).fill(2),
-  line: { color: '#4fc3f7', width: 3 },
-  name: 'メモリ',
-  hovertemplate: '時刻: %{x}秒<br>メモリ: %{y}%<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'lines',
-  x: resTime,
-  y: diskIO,
-  z: Array(60).fill(3),
-  line: { color: '#51cf66', width: 3 },
-  name: 'Disk I/O',
-  hovertemplate: '時刻: %{x}秒<br>Disk I/O: %{y}%<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'システムリソース使用率 3D推移', font: { color: '#4fc3f7', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '時刻 (秒)' }, yaxis: { ...sceneStyle.yaxis, title: '使用率 (%)' }, zaxis: { ...sceneStyle.zaxis, title: 'リソース種別', showticklabels: false } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+graphGenerators['performance-3d-4'] = function() {
+  Plotly.newPlot('performance-3d-4', [{
+    type: 'scatter3d',
+    mode: 'lines',
+    x: resTime,
+    y: cpuUsage,
+    z: Array(60).fill(1),
+    line: { color: '#ff6b6b', width: 3 },
+    name: 'CPU',
+    hovertemplate: '時刻: %{x}秒<br>CPU: %{y}%<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'lines',
+    x: resTime,
+    y: memUsage,
+    z: Array(60).fill(2),
+    line: { color: '#4fc3f7', width: 3 },
+    name: 'メモリ',
+    hovertemplate: '時刻: %{x}秒<br>メモリ: %{y}%<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'lines',
+    x: resTime,
+    y: diskIO,
+    z: Array(60).fill(3),
+    line: { color: '#51cf66', width: 3 },
+    name: 'Disk I/O',
+    hovertemplate: '時刻: %{x}秒<br>Disk I/O: %{y}%<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'システムリソース使用率 3D推移', font: { color: '#4fc3f7', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '時刻 (秒)' }, yaxis: { ...sceneStyle.yaxis, title: '使用率 (%)' }, zaxis: { ...sceneStyle.zaxis, title: 'リソース種別', showticklabels: false } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // ===== 数学グラフ（全て検証済み） =====
 
 // 数学グラフ1: 超高精度計算 誤差比較（固定データ）
-const precisions = [8, 16, 32, 38, 64, 128];
-const errors = [1e-6, 1e-12, 1e-24, 1e-38, 1e-64, 1e-128];
-const calcTimes = [0.01, 0.02, 0.05, 0.069, 0.15, 0.35];
+graphGenerators['math-3d-1'] = function() {
+  const precisions = [8, 16, 32, 38, 64, 128];
+  const errors = [1e-6, 1e-12, 1e-24, 1e-38, 1e-64, 1e-128];
+  const calcTimes = [0.01, 0.02, 0.05, 0.069, 0.15, 0.35];
 
-Plotly.newPlot('math-3d-1', [{
-  type: 'scatter3d',
-  mode: 'markers+text',
-  x: precisions,
-  y: errors,
-  z: calcTimes,
-  text: precisions.map(p => `${p}桁`),
-  textposition: 'top center',
-  marker: {
-    size: 12,
-    color: ['#ffaa00', '#ffaa00', '#4fc3f7', '#4dd0e1', '#51cf66', '#ffd93d'],
-    line: { color: '#ffffff', width: 2 }
-  },
-  hovertemplate: '精度: %{x}桁<br>誤差: %{y}<br>計算時間: %{z}ms<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: '超高精度計算 (38桁精度) 誤差比較', font: { color: '#4dd0e1', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '精度 (桁)' }, yaxis: { ...sceneStyle.yaxis, title: '誤差', type: 'log' }, zaxis: { ...sceneStyle.zaxis, title: '計算時間 (ms)' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('math-3d-1', [{
+    type: 'scatter3d',
+    mode: 'markers+text',
+    x: precisions,
+    y: errors,
+    z: calcTimes,
+    text: precisions.map(p => `${p}桁`),
+    textposition: 'top center',
+    marker: {
+      size: 12,
+      color: ['#ffaa00', '#ffaa00', '#4fc3f7', '#4dd0e1', '#51cf66', '#ffd93d'],
+      line: { color: '#ffffff', width: 2 }
+    },
+    hovertemplate: '精度: %{x}桁<br>誤差: %{y}<br>計算時間: %{z}ms<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: '超高精度計算 (38桁精度) 誤差比較', font: { color: '#4dd0e1', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '精度 (桁)' }, yaxis: { ...sceneStyle.yaxis, title: '誤差', type: 'log' }, zaxis: { ...sceneStyle.zaxis, title: '計算時間 (ms)' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // 数学グラフ2: 惑星軌道計算（固定データ）
-const orbitPoints = 200;
-const theta = Array.from({length: orbitPoints}, (_, i) => (i / orbitPoints) * 2 * Math.PI);
-const a = 150, e = 0.0167;
-const r = theta.map(t => a * (1 - e * e) / (1 + e * Math.cos(t)));
-const orbitX = r.map((rad, i) => rad * Math.cos(theta[i]));
-const orbitY = r.map((rad, i) => rad * Math.sin(theta[i]));
-const orbitZ = orbitY.map(val => val * 0.1);
+graphGenerators['math-3d-2'] = function() {
+  const orbitPoints = 200;
+  const theta = Array.from({length: orbitPoints}, (_, i) => (i / orbitPoints) * 2 * Math.PI);
+  const a = 150, e = 0.0167;
+  const r = theta.map(t => a * (1 - e * e) / (1 + e * Math.cos(t)));
+  const orbitX = r.map((rad, i) => rad * Math.cos(theta[i]));
+  const orbitY = r.map((rad, i) => rad * Math.sin(theta[i]));
+  const orbitZ = orbitY.map(val => val * 0.1);
 
-Plotly.newPlot('math-3d-2', [{
-  type: 'scatter3d',
-  mode: 'lines',
-  x: orbitX,
-  y: orbitY,
-  z: orbitZ,
-  line: { color: '#4dd0e1', width: 4 },
-  hovertemplate: 'X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>'
-}, {
-  type: 'scatter3d',
-  mode: 'markers',
-  x: [0],
-  y: [0],
-  z: [0],
-  marker: { size: 20, color: '#ffd93d' },
-  name: '太陽',
-  hovertemplate: '太陽<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: '惑星軌道計算 3D (38桁精度)', font: { color: '#4dd0e1', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'X (百万km)' }, yaxis: { ...sceneStyle.yaxis, title: 'Y (百万km)' }, zaxis: { ...sceneStyle.zaxis, title: 'Z (百万km)' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('math-3d-2', [{
+    type: 'scatter3d',
+    mode: 'lines',
+    x: orbitX,
+    y: orbitY,
+    z: orbitZ,
+    line: { color: '#4dd0e1', width: 4 },
+    hovertemplate: 'X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>'
+  }, {
+    type: 'scatter3d',
+    mode: 'markers',
+    x: [0],
+    y: [0],
+    z: [0],
+    marker: { size: 20, color: '#ffd93d' },
+    name: '太陽',
+    hovertemplate: '太陽<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: '惑星軌道計算 3D (38桁精度)', font: { color: '#4dd0e1', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'X (百万km)' }, yaxis: { ...sceneStyle.yaxis, title: 'Y (百万km)' }, zaxis: { ...sceneStyle.zaxis, title: 'Z (百万km)' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // 数学グラフ3: 10,000+ターゲット追跡（100個表示 - 固定シード）
 const targetCount = 100;
@@ -1214,121 +1256,175 @@ const threatLevel = [
 ];
 const targetColors = threatLevel.map(t => t > 0.7 ? '#ff6b6b' : t > 0.4 ? '#ffd93d' : '#51cf66');
 
-Plotly.newPlot('math-3d-3', [{
-  type: 'scatter3d',
-  mode: 'markers',
-  x: targetX,
-  y: targetY,
-  z: targetZ,
-  marker: {
-    size: 6,
-    color: targetColors,
-    line: { color: '#ffffff', width: 0.5 }
-  },
-  hovertemplate: 'X: %{x}<br>Y: %{y}<br>Z: %{z}<br>脅威度: %{text}<extra></extra>',
-  text: threatLevel.map(t => `${(t * 100).toFixed(1)}%`)
-}], {
-  ...darkTheme,
-  title: { text: '10,000+ ターゲット同時追跡 3D (100個表示)', font: { color: '#4dd0e1', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'X座標' }, yaxis: { ...sceneStyle.yaxis, title: 'Y座標' }, zaxis: { ...sceneStyle.zaxis, title: 'Z座標' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+graphGenerators['math-3d-3'] = function() {
+  Plotly.newPlot('math-3d-3', [{
+    type: 'scatter3d',
+    mode: 'markers',
+    x: targetX,
+    y: targetY,
+    z: targetZ,
+    marker: {
+      size: 6,
+      color: targetColors,
+      line: { color: '#ffffff', width: 0.5 }
+    },
+    hovertemplate: 'X: %{x}<br>Y: %{y}<br>Z: %{z}<br>脅威度: %{text}<extra></extra>',
+    text: threatLevel.map(t => `${(t * 100).toFixed(1)}%`)
+  }], {
+    ...darkTheme,
+    title: { text: '10,000+ ターゲット同時追跡 3D (100個表示)', font: { color: '#4dd0e1', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'X座標' }, yaxis: { ...sceneStyle.yaxis, title: 'Y座標' }, zaxis: { ...sceneStyle.zaxis, title: 'Z座標' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // 数学グラフ4: 演算処理周波数 5,195.7Hz（固定データ）
-const freqTime = 100;
-const frequency = Array.from({length: freqTime}, (_, i) => 5195.7 + Math.sin(i / 5) * 30);
-const operations = Array.from({length: freqTime}, (_, i) => i * 5195.7);
+graphGenerators['math-3d-4'] = function() {
+  const freqTime = 100;
+  const frequency = Array.from({length: freqTime}, (_, i) => 5195.7 + Math.sin(i / 5) * 30);
+  const operations = Array.from({length: freqTime}, (_, i) => i * 5195.7);
 
-Plotly.newPlot('math-3d-4', [{
-  type: 'scatter3d',
-  mode: 'lines+markers',
-  x: Array.from({length: freqTime}, (_, i) => i / 10),
-  y: frequency,
-  z: operations,
-  line: { color: '#4dd0e1', width: 4 },
-  marker: { size: 4, color: '#ffd93d' },
-  hovertemplate: '時刻: %{x}秒<br>周波数: %{y:.1f}Hz<br>累計演算: %{z:.0f}<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: '演算処理周波数 5,195.7Hz リアルタイム監視', font: { color: '#4dd0e1', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '時刻 (秒)' }, yaxis: { ...sceneStyle.yaxis, title: '周波数 (Hz)' }, zaxis: { ...sceneStyle.zaxis, title: '累計演算回数' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('math-3d-4', [{
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: Array.from({length: freqTime}, (_, i) => i / 10),
+    y: frequency,
+    z: operations,
+    line: { color: '#4dd0e1', width: 4 },
+    marker: { size: 4, color: '#ffd93d' },
+    hovertemplate: '時刻: %{x}秒<br>周波数: %{y:.1f}Hz<br>累計演算: %{z:.0f}<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: '演算処理周波数 5,195.7Hz リアルタイム監視', font: { color: '#4dd0e1', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: '時刻 (秒)' }, yaxis: { ...sceneStyle.yaxis, title: '周波数 (Hz)' }, zaxis: { ...sceneStyle.zaxis, title: '累計演算回数' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // ===== LLMグラフ（新規追加） =====
 
 // LLMグラフ1: Phase進化 (100 → 200 → 300 → 350)
-const phases = ['Phase 100', 'Phase 200', 'Phase 300', 'Phase 350'];
-const llmModels = [24, 48, 72, 84];
-const categories = [12, 24, 36, 42];
-const phiPower = [44, 88, 132, 154];
-const responseTime = [39, 18, 12, 10];
+graphGenerators['llm-evolution'] = function() {
+  const phases = ['Phase 100', 'Phase 200', 'Phase 300', 'Phase 350'];
+  const llmModels = [24, 48, 72, 84];
+  const llmCategories = [12, 24, 36, 42];
+  const phiPower = [44, 88, 132, 154];
+  const llmResponseTime = [39, 18, 12, 10];
 
-Plotly.newPlot('llm-evolution', [{
-  type: 'scatter3d',
-  mode: 'markers+text+lines',
-  x: llmModels,
-  y: categories,
-  z: responseTime,
-  text: phases,
-  textposition: 'top center',
-  line: { color: '#ff6ec7', width: 6 },
-  marker: {
-    size: [15, 18, 21, 24],
-    color: ['#a78bfa', '#667eea', '#ff6ec7', '#ffd93d'],
-    line: { color: '#ffffff', width: 2 }
-  },
-  hovertemplate: '%{text}<br>LLMモデル: %{x}個<br>カテゴリ: %{y}個<br>応答時間: %{z}秒<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: 'Phase 100 → 350 ∞ 進化の軌跡', font: { color: '#ff6ec7', size: 16 } },
-  scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'LLMモデル数' }, yaxis: { ...sceneStyle.yaxis, title: 'カテゴリ数' }, zaxis: { ...sceneStyle.zaxis, title: '応答時間 (秒)', autorange: 'reversed' } },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+  Plotly.newPlot('llm-evolution', [{
+    type: 'scatter3d',
+    mode: 'markers+text+lines',
+    x: llmModels,
+    y: llmCategories,
+    z: llmResponseTime,
+    text: phases,
+    textposition: 'top center',
+    line: { color: '#ff6ec7', width: 6 },
+    marker: {
+      size: [15, 18, 21, 24],
+      color: ['#a78bfa', '#667eea', '#ff6ec7', '#ffd93d'],
+      line: { color: '#ffffff', width: 2 }
+    },
+    hovertemplate: '%{text}<br>LLMモデル: %{x}個<br>カテゴリ: %{y}個<br>応答時間: %{z}秒<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: 'Phase 100 → 350 ∞ 進化の軌跡', font: { color: '#ff6ec7', size: 16 } },
+    scene: { ...sceneStyle, xaxis: { ...sceneStyle.xaxis, title: 'LLMモデル数' }, yaxis: { ...sceneStyle.yaxis, title: 'カテゴリ数' }, zaxis: { ...sceneStyle.zaxis, title: '応答時間 (秒)', autorange: 'reversed' } },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
 
 // ===== 音声技術グラフ（新規追加） =====
 
 // 音声グラフ1: 音声品質 & 生成速度比較
-const voiceSystems = [
-  'NOVE Voice\nNatural & Calm',
-  'Google TTS\n(標準)',
-  'Amazon Polly',
-  'Microsoft Azure',
-  'ElevenLabs',
-  'Coqui TTS'
+graphGenerators['voice-quality'] = function() {
+  const voiceSystems = [
+    'NOVE Voice\nNatural & Calm',
+    'Google TTS\n(標準)',
+    'Amazon Polly',
+    'Microsoft Azure',
+    'ElevenLabs',
+    'Coqui TTS'
+  ];
+  const voiceQuality = [99.9, 85.0, 88.5, 87.2, 95.0, 92.0];
+  const voiceSpeed = [5.0, 0.8, 2.5, 2.0, 15.0, 8.0];
+  const voiceCost = [0, 0, 4.0, 16.0, 30.0, 0];
+
+  Plotly.newPlot('voice-quality', [{
+    type: 'scatter3d',
+    mode: 'markers+text',
+    x: voiceQuality,
+    y: voiceSpeed,
+    z: voiceCost,
+    text: voiceSystems,
+    textposition: 'top center',
+    textfont: { size: 10 },
+    marker: {
+      size: 14,
+      color: ['#00d4ff', '#ffaa00', '#ff6b6b', '#4fc3f7', '#a78bfa', '#51cf66'],
+      line: { color: '#ffffff', width: 2 }
+    },
+    hovertemplate: '%{text}<br>品質: %{x}/100<br>生成時間: %{y}秒<br>費用: $%{z}/月<extra></extra>'
+  }], {
+    ...darkTheme,
+    title: { text: '音声システム比較 (品質・速度・費用)', font: { color: '#00d4ff', size: 16 } },
+    scene: {
+      ...sceneStyle,
+      xaxis: { ...sceneStyle.xaxis, title: '音声品質 (0-100)' },
+      yaxis: { ...sceneStyle.yaxis, title: '生成時間 (秒)', type: 'log' },
+      zaxis: { ...sceneStyle.zaxis, title: '月額費用 ($)' }
+    },
+    margin: { l: 0, r: 0, b: 0, t: 40 }
+  }, { responsive: true });
+};
+
+// ===== Intersection Observer for Lazy Loading =====
+const observerOptions = {
+  root: null,
+  rootMargin: '200px',  // Start loading 200px before the element enters viewport
+  threshold: 0
+};
+
+const graphObserver = new IntersectionObserver((entries, observer) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const graphId = entry.target.id;
+
+      // Only load each graph once
+      if (!loadedGraphs.has(graphId) && graphGenerators[graphId]) {
+        console.log(`🎨 Loading graph: ${graphId}`);
+        try {
+          graphGenerators[graphId]();
+          loadedGraphs.add(graphId);
+          observer.unobserve(entry.target);  // Stop observing after loading
+        } catch (error) {
+          console.error(`❌ Error loading graph ${graphId}:`, error);
+        }
+      }
+    }
+  });
+}, observerOptions);
+
+// Observe all graph containers
+const graphIds = [
+  'security-3d-1', 'security-3d-2', 'security-3d-3', 'security-3d-4',
+  'medical-3d-1', 'medical-3d-2', 'medical-3d-3', 'medical-3d-4',
+  'agi-3d-1', 'agi-3d-2', 'agi-3d-3', 'agi-3d-4',
+  'performance-3d-1', 'performance-3d-2', 'performance-3d-3', 'performance-3d-4',
+  'math-3d-1', 'math-3d-2', 'math-3d-3', 'math-3d-4',
+  'llm-evolution', 'voice-quality'
 ];
-const voiceQuality = [99.9, 85.0, 88.5, 87.2, 95.0, 92.0];
-const voiceSpeed = [5.0, 0.8, 2.5, 2.0, 15.0, 8.0];
-const voiceCost = [0, 0, 4.0, 16.0, 30.0, 0];
 
-Plotly.newPlot('voice-quality', [{
-  type: 'scatter3d',
-  mode: 'markers+text',
-  x: voiceQuality,
-  y: voiceSpeed,
-  z: voiceCost,
-  text: voiceSystems,
-  textposition: 'top center',
-  textfont: { size: 10 },
-  marker: {
-    size: 14,
-    color: ['#00d4ff', '#ffaa00', '#ff6b6b', '#4fc3f7', '#a78bfa', '#51cf66'],
-    line: { color: '#ffffff', width: 2 }
-  },
-  hovertemplate: '%{text}<br>品質: %{x}/100<br>生成時間: %{y}秒<br>費用: $%{z}/月<extra></extra>'
-}], {
-  ...darkTheme,
-  title: { text: '音声システム比較 (品質・速度・費用)', font: { color: '#00d4ff', size: 16 } },
-  scene: {
-    ...sceneStyle,
-    xaxis: { ...sceneStyle.xaxis, title: '音声品質 (0-100)' },
-    yaxis: { ...sceneStyle.yaxis, title: '生成時間 (秒)', type: 'log' },
-    zaxis: { ...sceneStyle.zaxis, title: '月額費用 ($)' }
-  },
-  margin: { l: 0, r: 0, b: 0, t: 40 }
-}, { responsive: true });
+graphIds.forEach(id => {
+  const element = document.getElementById(id);
+  if (element) {
+    graphObserver.observe(element);
+  } else {
+    console.warn(`⚠️  Graph container not found: ${id}`);
+  }
+});
 
-console.log('✅ 全22個の3Dグラフが正常に読み込まれました（LLM・音声追加版）');
+console.log('✅ Intersection Observer initialized for 22 graphs (lazy loading enabled)');
 
 }); // DOMContentLoaded終了
 </script>
