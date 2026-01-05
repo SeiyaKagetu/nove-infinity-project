@@ -716,7 +716,7 @@ class AIOptimizationCard(BaseCard):
             logger.debug(f"AIOptimizationCard: update_display: AI Factor data validated - factor={ai_factor:.3f}")
 
             self.ai_factor_label.setText(f"AI Factor: +{ai_factor:.2f} points")
-            self.ai_factor_bar.setValue(int(ai_factor))
+            self.ai_factor_bar.setValue(int(ai_factor * 100))
         except Exception as e:
             logger.error(f"AIOptimizationCard: update_display: AI Factor section update error: {str(e)}", exc_info=True)
             self.ai_factor_label.setText("AI Factor: +0.00 points")
