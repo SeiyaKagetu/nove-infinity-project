@@ -543,6 +543,8 @@ class AIOptimizationCard(BaseCard):
                 border: none;
                 border-radius: 3px;
                 background-color: {Colors.SECONDARY_BG};
+                height: 6px;
+                padding: 0px;
             }}
             QProgressBar::chunk {{
                 background-color: {color};
