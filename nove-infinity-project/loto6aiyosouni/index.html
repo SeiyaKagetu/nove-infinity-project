@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ロト6 AI分析・予測エンジン v70</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
+        
+        :root {
+            --neon-indigo: #6366f1;
+            --neon-cyan: #22d3ee;
+            --neon-rose: #f43f5e;
+        }
+
+        body { 
+            font-family: 'Noto Sans JP', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            background-color: #020617;
+        }
+
+        .font-numeric { font-family: 'Rajdhani', sans-serif; }
+
+        /* グラスモーフィズム */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* モバイル用スクロールバー隠し */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="text-slate-200" x-data="lotoApp()" x-init="init()">
+    
+    <header class="bg-slate-900/50 backdrop-blur-md border-b border-slate-800 py-6 sticky top-0 z-50">
+        <div class="container mx-auto px-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">ロト6 分析エンジン v70</h1>
+                <p class="text-slate-500 text-[10px] mt-1 uppercase tracking-widest font-bold">戦略的統計演算システム</p>
+            </div>
+            <div class="text-right">
+                <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">システム状態</div>
+                <div class="flex items-center text-emerald-400 text-sm font-bold">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full mr-2" :class="loading ? 'animate-ping' : 'animate-pulse'"></span>
+                    <span x-text="loading ? '同期中...' : 'オンライン'"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 期間選択タブ -->
+        <div class="flex flex-wrap gap-2 mb-8 bg-slate-900/50 p-2 rounded-2xl border border-slate-800 w-fit">
+            <template x-for="p in [10, 20, 26, 30]">
+                <button @click="changePeriod(p)" 
+                    class="px-6 py-2 rounded-xl text-xs font-black transition-all"
+                    :class="period === p ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'">
+                    <span x-text="p === 10 ? '短期分析' : p === 20 ? '中期分析' : p === 26 ? '3ヶ月分析' : '長期分析'"></span>
+                    <span class="opacity-50 ml-1 text-[10px]" x-text="p === 30 ? '(全データ)' : '(直近' + p + '回)'"></span>
+                </button>
+            </template>
+        </div>
+
+        <div x-show="!loading" x-cloak x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0 translate-y-4">
+            
+            <!-- 予測セクション -->
+            <section class="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-8 mb-8 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -mr-32 -mt-32"></div>
+                
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 relative z-10">
+                    <h2 class="text-2xl font-black flex items-center text-white">
+                        <span class="bg-slate-800 p-2 rounded-xl mr-4 border border-slate-700 text-indigo-400">🔮</span>
+                        次回のAI予測番号
+                    </h2>
+                    <div class="text-[10px] font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-full mt-2 md:mt-0 uppercase tracking-widest">
+                        アルゴリズム: ハイブリッドV70
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-4 items-center bg-slate-950/50 border border-slate-800 p-10 rounded-3xl mb-10 relative z-10">
+                    <template x-for="num in prediction">
+                        <div class="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center text-2xl md:text-3xl font-numeric font-black shadow-xl border border-slate-700 transform hover:-translate-y-2 hover:border-indigo-500 transition-all cursor-pointer active:scale-95"
+                             x-text="String(num).padStart(2, '0')">
+                        </div>
+                    </template>
+                    
+                    <div class="ml-auto flex space-x-2 mt-4 md:mt-0">
+                        <button @click="copyToClipboard()" class="p-4 rounded-xl glass-card border border-white/10 hover:bg-white/5 transition-colors" title="コピー">
+                            <span>📋</span>
+                        </button>
+                        <button @click="shareTwitter()" class="p-4 rounded-xl glass-card border border-white/10 hover:bg-white/5 transition-colors" title="Twitterで共有">
+                            <span>𝕏</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 予測根拠解説レポート -->
+                <div class="bg-slate-800/30 rounded-2xl p-8 border border-slate-800 relative z-10">
+                    <h3 class="text-sm font-bold text-slate-400 mb-6 flex items-center uppercase tracking-widest">
+                        <span class="mr-3 text-indigo-500">◆</span> AI予測レポート：選定の根拠
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <template x-for="detail in details">
+                            <div class="bg-slate-900/50 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-numeric font-black text-lg" x-text="String(detail.num).padStart(2, '0')"></span>
+                                    <span class="text-[10px] font-black px-3 py-1 rounded-full uppercase border"
+                                        :class="detail.reason.includes('トレンド') ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                                                detail.reason.includes('反発') ? 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' : 
+                                                'bg-slate-500/10 text-slate-400 border-slate-500/20'"
+                                        x-text="detail.reason">
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-400 leading-relaxed font-bold" x-text="detail.desc"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </section>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 分析セクション -->
+                <div class="space-y-8">
+                    <!-- ホットナンバー -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl">
+                        <h3 class="text-lg font-black mb-6 flex items-center text-rose-500">
+                            <span class="mr-3">🔥</span> 頻出数字 (ホットナンバー)
+                        </h3>
+                        <div class="grid grid-cols-5 gap-3">
+                            <template x-for="h in hot.slice(0, 10)">
+                                <div class="text-center p-3 bg-slate-950 rounded-2xl border border-slate-800 hover:border-rose-500/30 transition-all">
+                                    <div class="text-xl font-numeric font-black text-rose-500" x-text="String(h[0]).padStart(2, '0')"></div>
+                                    <div class="text-[9px] text-slate-500 font-bold mt-1" x-text="h[1] + '回'"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- コールドナンバー -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl">
+                        <h3 class="text-lg font-black mb-6 flex items-center text-cyan-500">
+                            <span class="mr-3">❄️</span> 停滞数字 (コールドナンバー)
+                        </h3>
+                        <div class="grid grid-cols-5 gap-3">
+                            <template x-for="c in cold.slice(0, 10)">
+                                <div class="text-center p-3 bg-slate-950 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
+                                    <div class="text-xl font-numeric font-black text-cyan-400" x-text="String(c).padStart(2, '0')"></div>
+                                    <div class="text-[9px] text-slate-500 font-bold mt-1">出現なし</div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 履歴セクション -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl overflow-hidden">
+                    <h3 class="text-lg font-black mb-6 flex items-center text-white">
+                        <span class="mr-3 text-indigo-500">📋</span> 当選結果履歴
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-950 border-b border-slate-800 text-[10px] text-slate-500 font-black uppercase tracking-widest">
+                                <tr>
+                                    <th class="py-4 px-4">回号 / 抽せん日</th>
+                                    <th class="py-4 px-4 text-center">当選番号</th>
+                                    <th class="py-4 px-4 text-right">結果</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">
+                                <template x-for="draw in history.slice(0, 10)">
+                                    <tr class="hover:bg-slate-800/30 transition-colors">
+                                        <td class="py-5 px-4 text-xs">
+                                            <div class="font-black text-slate-300" x-text="'第' + draw.draw + '回'"></div>
+                                            <div class="text-slate-600 text-[10px]" x-text="draw.date"></div>
+                                        </td>
+                                        <td class="py-5 px-4 text-center">
+                                            <div class="flex justify-center gap-1">
+                                                <template x-for="n in draw.numbers">
+                                                    <span class="w-7 h-7 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-numeric font-black text-slate-300" x-text="String(n).padStart(2, '0')"></span>
+                                                </template>
+                                                <span class="w-7 h-7 rounded bg-rose-900/30 border border-rose-500/30 flex items-center justify-center text-[10px] font-numeric font-black text-rose-500 ml-1" x-text="String(draw.bonus).padStart(2, '0')"></span>
+                                            </div>
+                                        </td>
+                                        <td class="py-5 px-4 text-right text-xs">
+                                            <div x-show="draw.prize1 > 0">
+                                                <div class="font-black text-emerald-500 font-numeric" x-text="'¥' + draw.prize1.toLocaleString()"></div>
+                                                <div class="text-[9px] text-slate-500 font-bold" x-text="draw.winners1 + '口当せん'"></div>
+                                            </div>
+                                            <div x-show="draw.prize1 === 0" class="text-slate-600 font-bold">該当なし</div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- アルゴリズム詳細解説 -->
+            <section class="mt-8 bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+                <div class="absolute bottom-0 right-0 w-96 h-96 bg-cyan-600/5 blur-[120px] -mb-48 -mr-48"></div>
+                
+                <h3 class="text-xl font-black mb-8 flex items-center text-white relative z-10">
+                    <span class="bg-slate-800 p-2 rounded-xl mr-4 border border-slate-700 text-cyan-400">⚙️</span>
+                    ハイブリッド統計演算モデル v70 の仕組み
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-indigo-400 font-black text-sm mb-2 flex items-center uppercase tracking-wider">
+                                <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-2"></span>
+                                1. トレンド抽出アルゴリズム
+                            </h4>
+                            <p class="text-xs text-slate-400 leading-relaxed font-bold">
+                                選択された時間軸において、標準偏差を超える頻度で出現している数字を「正のバイアス」として特定。物理的な抽選機の癖や、短期的な確率の偏りを「トレンド」として捉え、予測の40%をここから抽出します。
+                            </p>
+                        </div>
+                        <div>
+                            <h4 class="text-cyan-400 font-black text-sm mb-2 flex items-center uppercase tracking-wider">
+                                <span class="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-2"></span>
+                                2. 平均回帰リバウンド分析
+                            </h4>
+                            <p class="text-xs text-slate-400 leading-relaxed font-bold">
+                                「大数の法則」に基づき、長期間出現が滞っている数字は、統計学的に「平均値」へ戻ろうとする圧力が働くと仮定。これを「リバウンド候補」として予測の30%に配置します。
+                            </p>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-rose-400 font-black text-sm mb-2 flex items-center uppercase tracking-wider">
+                                <span class="w-1.5 h-1.5 bg-rose-500 rounded-full mr-2"></span>
+                                3. 非線形ゆらぎ（カオス理論）
+                            </h4>
+                            <p class="text-xs text-slate-400 leading-relaxed font-bold">
+                                宝くじの抽選は完全な決定論ではなく、予測不能な「ゆらぎ」が存在します。残りの1個をあえてランダムに抽出することで、意外な数字をカバーし、予測の網を広げます。
+                            </p>
+                        </div>
+                        <div>
+                            <h4 class="text-emerald-400 font-black text-sm mb-2 flex items-center uppercase tracking-wider">
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2"></span>
+                                4. 昇順ソート・人間工学最適化
+                            </h4>
+                            <p class="text-xs text-slate-400 leading-relaxed font-bold">
+                                抽出された数字は昇順にソートされます。これは当選パターンの記録特性および、マークシート記入時の正確性を高めるための人間工学的最適化です。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 全数字頻度分布 -->
+            <section class="mt-8 bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl">
+                <h3 class="text-lg font-black mb-8 flex items-center text-white">
+                    <span class="mr-3 text-indigo-500">📊</span> 数字別 出現回数分布 (選択期間中)
+                </h3>
+                <div class="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-11 lg:grid-cols-15 gap-3">
+                    <template x-for="item in fullCounts">
+                        <div class="h-20 w-full rounded-2xl border flex flex-col items-center justify-center transition-all cursor-default"
+                            :class="item.count >= 4 ? 'bg-rose-500/10 border-rose-500/30 ring-1 ring-rose-500/20' : 
+                                    item.count >= 2 ? 'bg-orange-500/10 border-orange-500/20' : 
+                                    item.count === 0 ? 'bg-slate-950 border-slate-800' : 'bg-indigo-500/5 border-indigo-500/10'">
+                            <span class="text-xl font-numeric font-black" :class="item.count >= 4 ? 'text-rose-500' : item.count >= 2 ? 'text-orange-400' : item.count === 0 ? 'text-slate-700' : 'text-indigo-300'" x-text="String(item.num).padStart(2, '0')"></span>
+                            <span class="text-[9px] font-black uppercase tracking-tighter" :class="item.count >= 4 ? 'text-rose-500/70' : item.count >= 2 ? 'text-orange-400/70' : item.count === 0 ? 'text-slate-600' : 'text-indigo-400/70'" x-text="item.count + '回'"></span>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="bg-slate-950 text-slate-600 py-12 mt-12 border-t border-slate-900">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-xs font-black uppercase tracking-[0.2em] mb-4">NOVE INFINITY PROJECT | ロト6 分析 v70</p>
+            <p class="text-[10px] max-w-2xl mx-auto leading-relaxed opacity-50 italic">
+                ※当演算エンジンは、過去の実績値を元に統計学的なスコアリングを行っていますが、当せんを保証するものではありません。
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        function lotoApp() {
+            return {
+                loading: true,
+                period: 26,
+                prediction: [],
+                details: [],
+                hot: [],
+                cold: [],
+                history: [],
+                fullCounts: [],
+                init() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    this.period = parseInt(urlParams.get('period')) || 26;
+                    this.fetchData();
+                },
+                changePeriod(p) {
+                    if (this.period === p) return;
+                    this.period = p;
+                    window.history.pushState({}, '', `?period=${p}`);
+                    this.fetchData();
+                },
+                copyToClipboard() {
+                    const text = this.prediction.map(n => String(n).padStart(2, '0')).join(', ');
+                    navigator.clipboard.writeText(text);
+                    alert("予測番号をコピーしました: " + text);
+                },
+                shareTwitter() {
+                    const text = `ロト6 AI予測 (v70) 次回の予想番号は [${this.prediction.map(n => String(n).padStart(2, '0')).join(', ')}] です！\n#ロト6 #AI予想 #noveos\n`;
+                    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`);
+                },
+                async fetchData() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch(`/.netlify/functions/loto6-logic?period=${this.period}`);
+                        const res = await response.json();
+                        this.prediction = res.prediction;
+                        this.details = res.details;
+                        this.hot = res.hot;
+                        this.cold = res.cold;
+                        this.history = res.data;
+                        this.fullCounts = res.fullCounts;
+                    } catch (e) {
+                        console.error("Fetch error:", e);
+                    } finally {
+                        setTimeout(() => { this.loading = false; }, 300);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
